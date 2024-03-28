@@ -43,50 +43,22 @@ class MyRobotSlam(RobotAbstract):
         # storage for pose after localization
         self.corrected_pose = np.array([0, 0, 0])
 
+        self.index = 0
+
     def control(self):
         """
         Main control function executed at each time step
         """
-        return self.control_tp1()
+        return self.control_tp2()
 
     def control_tp1(self):
         """
         Control function for TP1
         """
-
         self.tiny_slam.compute()
 
-        lidar_data = self.lidar()
-        value = np.min(lidar_data.get_sensor_values())
-        index = np.argmin(lidar_data.get_sensor_values())
-        angle = lidar_data.get_ray_angles()[index]
+        command = reactive_obst_avoid(self.lidar())
 
-        distance_min = 50
-        forward_speed = 0.5
-
-        # eviter de tourner face a un mur
-        if 0 <= angle and angle < np.pi/2 and value < distance_min:
-            rotation_speed = np.random.uniform(-1, 0)
-            command = {"forward": 0, "rotation": rotation_speed}
-        elif 0 > angle and angle > -np.pi/2 and value < distance_min:
-            rotation_speed = np.random.uniform(0, 1)
-            command = {"forward": 0, "rotation": rotation_speed}
-        else:
-            command = {"forward": forward_speed, "rotation": 0}
-
-        # # rotation aleatoire
-        # if 0 <= angle and angle < np.pi/2 and value < distance_min:
-        #     rotation_speed = np.random.uniform(-1, 0)
-        #     command = {"forward": 0, "rotation": rotation_speed}
-        # elif 0 > angle and angle > -np.pi/2 and value < distance_min:
-        #     rotation_speed = np.random.uniform(0, 1)
-        #     command = {"forward": 0, "rotation": rotation_speed}
-        # else:
-        #     command = {"forward": forward_speed, "rotation": 0}
-        
-        # # Original code
-        # # Compute new command speed to perform obstacle avoidance
-        # command = reactive_obst_avoid(self.lidar())
         return command
 
     def control_tp2(self):
@@ -94,7 +66,9 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP2
         """
         pose = self.odometer_values()
-        goal = [0,0,0]
+        print(pose)
+        # goal = [[-100,200,0],[100,200,0]]
+        goal = [-400, 200, 0]
 
         # Compute new command speed to perform obstacle avoidance
         command = potential_field_control(self.lidar(), pose, goal)
