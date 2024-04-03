@@ -28,3 +28,5 @@ if __name__ == '__main__':
                           use_keyboard=False)
 
     simulator.run()
+
+    my_robot.tiny_slam.grid.save("map")

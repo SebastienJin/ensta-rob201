@@ -49,6 +49,9 @@ class MyRobotSlam(RobotAbstract):
         """
         Main control function executed at each time step
         """
+
+        self.tiny_slam.update_map(self.lidar(), self.odometer_values())
+
         return self.control_tp2()
 
     def control_tp1(self):

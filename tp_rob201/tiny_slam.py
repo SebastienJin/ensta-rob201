@@ -60,6 +60,32 @@ class TinySlam:
         """
         # TODO for TP3
 
+        distances = lidar.get_sensor_values()
+        angles = lidar.get_ray_angles()
+
+        current_position = np.array([pose[0], pose[1]])
+        current_angle = pose[2]
+
+        p = 0.99
+        val = np.log(p/(1 - p))
+        
+        obs_x = distances * np.cos(angles + current_angle) + current_position[0]
+        obs_y = distances * np.sin(angles + current_angle) + current_position[1]
+        self.grid.add_map_points(obs_x, obs_y, val)
+
+        prop = 0.9
+        obs_x_line = prop * distances * np.cos(angles + current_angle) + current_position[0]
+        obs_y_line = prop * distances * np.sin(angles + current_angle) + current_position[1]
+        for i in range(len(distances)):
+            self.grid.add_map_line(current_position[0], current_position[1], obs_x_line[i], obs_y_line[i], -val)
+        
+        seuil = 3
+        self.grid.occupancy_map[self.grid.occupancy_map > seuil] = seuil
+        self.grid.occupancy_map[self.grid.occupancy_map < -seuil] = -seuil
+        
+        self.grid.display_cv(pose)
+
+
     def compute(self):
         """ Useless function, just for the exercise on using the profiler """
         # Remove after TP1
