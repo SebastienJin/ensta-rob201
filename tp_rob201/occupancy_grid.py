@@ -23,8 +23,7 @@ class OccupancyGrid:
         self.x_max_map, self.y_max_map = self.conv_world_to_map(
             self.x_max_world, self.y_max_world)
 
-        self.occupancy_map = np.zeros(
-            (int(self.x_max_map), int(self.y_max_map)))
+        self.occupancy_map = np.zeros((int(self.x_max_map), int(self.y_max_map)))
 
     def conv_world_to_map(self, x_world, y_world):
         """

@@ -49,9 +49,14 @@ class MyRobotSlam(RobotAbstract):
         """
         Main control function executed at each time step
         """
-
-        # self.tiny_slam.update_map(self.lidar(), self.odometer_values())
-
+        self.counter += 1
+        
+        if self.counter % 10 == 0:
+            score = self.tiny_slam.localise(self.lidar(), self.odometer_values())
+            print("Score: ", score)
+            self.tiny_slam.update_map(self.lidar(), self.tiny_slam.get_corrected_pose(self.odometer_values()))
+            print(self.tiny_slam.odom_pose_ref)
+        
         return self.control_tp2()
 
     def control_tp1(self):
@@ -69,8 +74,8 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP2
         """
         pose = self.odometer_values()
-        print(pose)
-        goal = np.array([[-400, 200, 0],[-105, 200, 0],[-100, 480, 0],[0, 550, 0],[10, 800, 0],[ -300, 800, 0]])
+        # print(pose)
+        goal = np.array([[-400, 200, 0],[-105, 200, 0],[-100, 480, 0],[-15, 550, 0]])
 
         # Compute new command speed to perform obstacle avoidance
         command = potential_field_control(self.lidar(), pose, goal, self.target)[0]

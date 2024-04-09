@@ -58,7 +58,7 @@ def potential_field_control(lidar, current_pose, goal_pose, target):
     d_change = 40
     stop_dist = 5
     d_safe = 40
-    K_cone = 0.5
+    K_cone = 0.1
     K_quad = K_cone/d_change
     
     distances = lidar.get_sensor_values()
@@ -80,7 +80,7 @@ def potential_field_control(lidar, current_pose, goal_pose, target):
     
     # eviter des obstacles
     if min_dist < d_safe :
-        K_obs = 4000
+        K_obs = 1000
         gradient_obstacle = K_obs/(min_dist**3)*((1/min_dist)-(1/d_safe))*(obstacle_position - current_position)
     else :
         gradient_obstacle = np.array([0,0])
