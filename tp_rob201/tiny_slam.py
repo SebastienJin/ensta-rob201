@@ -86,11 +86,10 @@ class TinySlam:
         n = 0
         sigma = 0.01
         
-        while ( n < 100 ):
+        while ( n < 1000 ):
             change = np.random.normal(0, sigma,3)
             change[2] = change[2]/10
             ODOM_POSE_REF = self.odom_pose_ref + change
-            # print(ODOM_POSE_REF)
             pose = self.get_corrected_pose(raw_odom_pose, ODOM_POSE_REF)
             current_score = self._score(lidar, pose)
 
@@ -117,7 +116,7 @@ class TinySlam:
         current_position = np.array([pose[0], pose[1]])
         current_angle = pose[2]
 
-        p1, p2 = 0.9, 0.1
+        p1, p2 = 0.99, 0.01
         val1, val2 = np.log(p1/(1-p1)), np.log(p2/(1-p2))
         
         obs_x = distances * np.cos(angles + current_angle) + current_position[0]

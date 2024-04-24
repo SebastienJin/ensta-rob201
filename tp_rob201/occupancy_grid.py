@@ -122,33 +122,6 @@ class OccupancyGrid:
 
         self.occupancy_map[x_px, y_px] += val
 
-    def display_plt(self, robot_pose, goal=None, traj=None):
-        """
-        Screen display of map and robot pose,
-        using matplotlib (slower than the opencv version)
-        robot_pose : [x, y, theta] nparray, corrected robot pose
-        """
-
-        plt.cla()
-        plt.imshow(self.occupancy_map.T, origin='lower',
-                   extent=[self.x_min_world, self.x_max_world, self.y_min_world, self.y_max_world])
-        plt.clim(-4, 4)
-        plt.axis("equal")
-
-        if traj is not None:
-            plt.plot(traj[0, :], traj[1, :], 2, 'w')
-
-        if goal is not None:
-            plt.scatter(goal[0], goal[1], 4, 'white')
-
-        delta_x = np.cos(robot_pose[2]) * 10
-        delta_y = np.sin(robot_pose[2]) * 10
-        plt.arrow(robot_pose[0], robot_pose[1], delta_x, delta_y,
-                  color='red', head_width=5, head_length=10, )
-
-        # plt.show()
-        plt.pause(0.001)
-
     def display_cv(self, robot_pose, goal=None, traj=None):
         """
         Screen display of map and robot pose,

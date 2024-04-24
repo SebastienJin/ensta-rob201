@@ -31,7 +31,7 @@ class MyRobotSlam(RobotAbstract):
         self.counter = 0
 
         # Init SLAM object
-        self._size_area = (800, 800)
+        self._size_area = (800, 1200)
         self.occupancy_grid = OccupancyGrid(x_min=- self._size_area[0],
                                             x_max=self._size_area[0],
                                             y_min=- self._size_area[1],
@@ -43,30 +43,21 @@ class MyRobotSlam(RobotAbstract):
         # storage for pose after localization
         self.corrected_pose = np.array([0, 0, 0])
 
+        # target index for a list of goals
         self.target = 0
 
     def control(self):
         """
         Main control function executed at each time step
         """
-        self.counter += 1
-        
-        if self.counter % 10 == 0:
-            score = self.tiny_slam.localise(self.lidar(), self.odometer_values())
-            print("Score: ", score)
-            self.tiny_slam.update_map(self.lidar(), self.tiny_slam.get_corrected_pose(self.odometer_values()))
-            print(self.tiny_slam.odom_pose_ref)
-        
-        return self.control_tp2()
+        return self.control_tp4()
 
     def control_tp1(self):
         """
         Control function for TP1
         """
         self.tiny_slam.compute()
-
         command = reactive_obst_avoid(self.lidar())
-
         return command
 
     def control_tp2(self):
@@ -74,11 +65,36 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP2
         """
         pose = self.odometer_values()
-        # print(pose)
-        goal = np.array([[-400, 200, 0],[-105, 200, 0],[-100, 480, 0],[-15, 550, 0]])
+        # goal = np.array([[-400, 200, 0],[-105, 200, 0],[-100, 480, 0],[-15, 550, 0]])
+        goal = np.array([[-400, 0, 0],[-400, 210, 0],[-105, 210, 0]])
+        command, self.target = potential_field_control(self.lidar(), pose, goal, self.target)
 
-        # Compute new command speed to perform obstacle avoidance
-        command = potential_field_control(self.lidar(), pose, goal, self.target)[0]
-        self.target = potential_field_control(self.lidar(), pose, goal, self.target)[1]
+        return command
+    
+    def control_tp3(self):
+        """
+        Control function for TP3
+        """
+        self.tiny_slam.update_map(self.lidar(), self.odometer_values())
+        
+        pose = self.odometer_values()
+        goal = np.array([[-400, 0, 0],[-400, 200, 0],[-105, 200, 0]])
+        command, self.target = potential_field_control(self.lidar(), pose, goal, self.target)
 
+        return command
+    
+    def control_tp4(self):
+        """
+        Control function for TP4
+        """
+        self.counter += 1
+        
+        self.tiny_slam.localise(self.lidar(), self.odometer_values())
+        
+        pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
+        self.tiny_slam.update_map(self.lidar(), pose)
+
+        goal = np.array([[-400, 0, 0],[-400, 200, 0],[-105, 200, 0]])
+        command, self.target = potential_field_control(self.lidar(), pose, goal, self.target)
+        
         return command
