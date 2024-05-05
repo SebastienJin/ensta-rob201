@@ -105,29 +105,30 @@ class MyRobotSlam(RobotAbstract):
         """
         Control function for TP5
         """
-        
-        # go to the goal
         pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
         self.tiny_slam.localise(self.lidar(), self.odometer_values())
         self.tiny_slam.update_map(self.lidar(), pose, True)
-        command = potential_field_control_tp5(self.lidar(), pose, self.occupancy_grid.goal)
 
-        # if we are close to the goal, plan a path back to start
-        if np.linalg.norm(self.tiny_slam.get_corrected_pose(self.odometer_values(), None) - self.occupancy_grid.goal) <= 5:
-            
-            # just reach the main goal, calculate a path first
-            if self.occupancy_grid.returning == 0:
+        if self.occupancy_grid.returning == 0:
+            command = potential_field_control_tp5(self.lidar(), pose, self.occupancy_grid.goal)
 
+            # if we are close to the goal, plan a path back to start
+            if np.linalg.norm(self.tiny_slam.get_corrected_pose(self.odometer_values(), None) - self.occupancy_grid.goal) <= 5:
+
+                # just reach the main goal, calculate a path first
                 start = time()
                 self.occupancy_grid.path = self.planner.plan(np.array([0, 0, 0]), self.tiny_slam.get_corrected_pose(self.odometer_values(), None) )
                 print("Time of calculation : ", round(time()- start,3), " s.")
 
                 # update basic variables
                 self.occupancy_grid.returning = 1
-                self.occupancy_grid.index_back_to_start = 0
-            
-            # following the return path
-            else:
+                # self.occupancy_grid.index_back_to_start = 0
+
+        # following the return path
+        else:
+            command = command = potential_field_control_tp5(self.lidar(), pose, self.occupancy_grid.goal, False)
+
+            if np.linalg.norm(self.tiny_slam.get_corrected_pose(self.odometer_values(), None) - self.occupancy_grid.goal) <= 5:
                 # follow by reseting the goal recursively
                 n_step = 5
                 if self.occupancy_grid.index_back_to_start < len(self.occupancy_grid.path) - n_step:

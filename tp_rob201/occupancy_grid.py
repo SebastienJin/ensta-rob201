@@ -33,7 +33,7 @@ class OccupancyGrid:
         self.returning = 0
         
         # Goals of the robot
-        self.goal = np.array([50, -200, 0]) # [-250, 100, 0]
+        self.goal = np.array([0, -300, 0]) # [-250, 100, 0]
         self.main_goal = self.goal
 
     def conv_world_to_map(self, x_world, y_world):
@@ -214,14 +214,14 @@ class OccupancyGrid:
 
         cv2.namedWindow("map slam")
 
+        # path
+        for i in range(len(traj) - 1):
+            cv2.line(img2, traj[i], traj[i + 1], (255, 255, 255), 2)
+
         # goal and start
         main_goal = self.conv_world_to_map(self.main_goal[0], -self.main_goal[1])
         cv2.circle(img2, main_goal, 3, color=(255, 255, 0), thickness=-1)    
         cv2.circle(img2, self.conv_world_to_map(0,0), 3, color=(0, 255, 0), thickness=-1)
-
-        # path
-        for i in range(len(traj) - 1):
-            cv2.line(img2, traj[i], traj[i + 1], (255, 255, 255), 2)
         
         # moving goal used for returning
         if goal is not None:
