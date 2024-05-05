@@ -1,6 +1,6 @@
 import numpy as np
 import heapq
-
+import itertools
 from occupancy_grid import OccupancyGrid
 
 
@@ -22,7 +22,12 @@ class Planner:
         """
         # TODO for TP5
 
-        path = [start, goal]  # list of poses
+        # path = [start, goal]  # list of poses
+
+        start = self.grid.conv_world_to_map(start[0], -start[1])
+        goal  = self.grid.conv_world_to_map(goal[0], -goal[1])
+
+        path = self.A_Star(start, goal)
         return path
 
     def explore_frontiers(self):
@@ -32,13 +37,19 @@ class Planner:
     
     def get_neighbors(self, current_cell):
         """ Get the neighbors of a cell """
-        directions = np.array([[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [1, -1], [-1, -1], [-1, 1]])
+        directions = np.array([[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]])
         neighbors = []
         for direction in directions:
             neighbor = (current_cell[0] + direction[0], current_cell[1] + direction[1])
-            if (0 <= neighbor[0] < self.grid.x_max_map) and (0 <= neighbor[1] < self.grid.y_max_map):
+            if (0 <= neighbor[0] < self.grid.x_max_map) and (0 <= neighbor[1] < self.grid.y_max_map) and self.grid.occupancy_map[neighbor[0]][-neighbor[1]] <= 0:
                 neighbors.append(neighbor)
         return neighbors
+    
+    # def get_neighbors(self, current):
+    #     x, y = current
+    #     neighbors = {(x+i, y+j) for i, j in itertools.product([-1, 0, 1], repeat=2) if (i != 0 or j != 0) and
+    #              0 <= x+i < self.grid.x_max_map and 0 <= y+j < self.grid.y_max_map and self.grid.occupancy_map[x+i][-(y+j)] <= 0}
+    #     return neighbors
     
     def heuristic(self, cell_1, cell_2):
         """ Compute the heuristic between two cells """
@@ -54,7 +65,7 @@ class Planner:
     def A_Star(self, start, goal):
         
         # Initialisation
-        openSet = [(self.h(start,goal), start)]         
+        openSet = [(self.heuristic(start,goal), start)]         
         # On définit la liste de priorités : de base, c'est juste le start, de fScore h(start, goal)
 
         # Utiliser un set et non pas une liste est beaucoup plus rapide ( gain de temps : x10)
@@ -70,10 +81,10 @@ class Planner:
         # C'est à dire quand le noeud a déjà été visité.
         
         gScore= {start : 0}                     # Distance start -> start : 0
-        fScore = {start : self.h(start, goal)}  # Distance start -> goal : h(start, goal)
+        fScore = {start : self.heuristic(start, goal)}  # Distance start -> goal : h(start, goal)
         
         # Tant que l'on a des noeuds à explorer
-        while openSet is not []:
+        while openSet:
             # On pop le noeud avec le fScore le plus faible
             current = heapq.heappop(openSet)[1]
             
@@ -90,7 +101,7 @@ class Planner:
             for neighbor in neighbors:
                 
                     # On regarde son gScore a travers le noeud actuel
-                    tentative_gScore = gScore[current] + self.h(current, neighbor)
+                    tentative_gScore = gScore[current] + self.heuristic(current, neighbor)
 
                     # Si le voisin a déjà été visité et si la tentative de gScore n'améliore rien, on passe
                     if neighbor in visited_nodes and tentative_gScore >= gScore[neighbor] - 10e-3:
@@ -101,7 +112,7 @@ class Planner:
                     # On note le voisin comme issu du noeud courant
                     gScore[neighbor] = tentative_gScore                          
                     # On actualise le gScore de ce voisin
-                    fScore[neighbor] = tentative_gScore + self.h(neighbor, goal) 
+                    fScore[neighbor] = tentative_gScore + self.heuristic(neighbor, goal) 
                     # On note le fScore de ce voisin
                     if ((fScore[neighbor], neighbor) not in openSet):
                         # On rajoute ce voisin dans openSet, avec son fScore

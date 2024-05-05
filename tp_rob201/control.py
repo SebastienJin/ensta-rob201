@@ -112,3 +112,71 @@ def potential_field_control(lidar, current_pose, goal_pose, target):
     command = {"forward": speed, "rotation": rotation}
 
     return [command, target]
+
+def potential_field_control_tp5(lidar, current_pose, goal_pose):
+    """
+    Control using potential field for goal reaching and obstacle avoidance
+    lidar : placebot object with lidar data
+    current_pose : [x, y, theta] nparray, current pose in odom or world frame
+    goal_pose : [x, y, theta] nparray, target pose in odom or world frame
+    Notes: As lidar and odom are local only data, goal and gradient will be defined either in
+    robot (x,y) frame (centered on robot, x forward, y on left) or in odom (centered / aligned
+    on initial pose, x forward, y on left)
+    """ 
+
+    # system parameters
+    d_change = 40
+    stop_dist = 5
+    d_safe = 40
+    K_cone = 0.2
+    K_quad = K_cone/d_change
+    
+    distances = lidar.get_sensor_values()
+    angles = lidar.get_ray_angles()
+    
+    current_position = np.array([current_pose[0], current_pose[1]])
+    current_angle = current_pose[2]
+    goal_position = np.array([goal_pose[0], goal_pose[1]])
+    
+    # gradient
+    direction = goal_position - current_position
+    distance = np.linalg.norm(direction)
+
+    # l'obstacle le plus proche
+    index = np.argmin(distances)
+    min_dist = distances[index]
+    min_angle = angles[index]
+    obstacle_position = np.array([current_pose[0] + min_dist*np.cos(min_angle+current_angle), current_pose[1] + min_dist*np.sin(min_angle+current_angle)])
+    
+    # eviter des obstacles
+    if min_dist < d_safe :
+        K_obs = 1000
+        gradient_obstacle = K_obs/(min_dist**3)*((1/min_dist)-(1/d_safe))*(obstacle_position - current_position)
+    else :
+        gradient_obstacle = np.array([0,0])
+    
+    # Potentiel conique
+    if distance > d_change :
+        gradient = K_cone/distance*direction
+        gradient = gradient - gradient_obstacle
+        gradient_angle = np.arctan2(gradient[1], gradient[0])
+        gradient_norme = np.linalg.norm(gradient)
+        speed = np.clip(gradient_norme*np.cos(gradient_angle-current_angle), -1, 1)
+        rotation = np.clip(5*gradient_norme*np.sin(gradient_angle-current_angle), -1, 1)
+    
+    # Potentiel quadratique
+    elif stop_dist < distance <= d_change :
+        gradient = K_quad*direction
+        gradient = gradient - gradient_obstacle
+        gradient_angle = np.arctan2(gradient[1], gradient[0])
+        gradient_norme = np.linalg.norm(gradient)
+        speed = np.clip(gradient_norme*np.cos(gradient_angle-current_angle), -1, 1)
+        rotation = np.clip(5*gradient_norme*np.sin(gradient_angle-current_angle), -1, 1)
+    
+    elif distance <= stop_dist :
+        speed = 0
+        rotation = 0
+    
+    command = {"forward": speed, "rotation": rotation}
+
+    return command

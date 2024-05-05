@@ -8,7 +8,6 @@ import math
 from collections import defaultdict
 import copy
 
-
 class OccupancyGrid:
     """Simple occupancy grid"""
 
@@ -24,6 +23,18 @@ class OccupancyGrid:
             self.x_max_world, self.y_max_world)
 
         self.occupancy_map = np.zeros((int(self.x_max_map), int(self.y_max_map)))
+        
+        self.path = []
+
+        # Counter to follow where we are in the path back to the start
+        self.counter_back_to_start = 0
+
+        #Boolean to indicate if we reached the primary goal
+        self.is_primary_goal = 1
+        
+        # Goal of the robot
+        self.goal = np.array([50, -200, 0])
+        self.primarygoal = self.goal
 
     def conv_world_to_map(self, x_world, y_world):
         """
@@ -188,3 +199,53 @@ class OccupancyGrid:
         filename : base name (without extension) of file on disk
         """
         # TODO
+
+    def my_display(self, robot_pose, goal=None, traj=None):
+        """
+        Screen display of map and robot pose,
+        using opencv (faster than the matplotlib version)
+        robot_pose : [x, y, theta] nparray, corrected robot pose
+        """
+        img = cv2.flip(self.occupancy_map.T, 0)
+        img = img - img.min()
+        img = img / img.max() * 255
+        img = np.uint8(img)
+        img2 = cv2.applyColorMap(src=img, colormap=cv2.COLORMAP_JET)
+
+        cv2.namedWindow("map slam")
+
+        # goal and start
+        primarygoal = self.conv_world_to_map(self.primarygoal[0], -self.primarygoal[1])
+        cv2.circle(img2, primarygoal, 3, color=(255, 255, 0), thickness=-1)    
+        cv2.circle(img2, self.conv_world_to_map(0,0), 3, color=(0, 255, 0), thickness=-1)
+        
+        # Dessiner le chemin avec points
+        # for node in traj:
+        #     pt_node = (node[0], node[1])
+        #     cv2.circle(img2, pt_node, 0, color=(0, 0, 0), thickness=1)
+
+        # Dessiner le chemin avec lignes
+        for i in range(len(traj) - 1):
+            cv2.line(img2, traj[i], traj[i + 1], (255, 255, 255), 2)
+        
+        if goal is not None:
+            pt_x, pt_y = self.conv_world_to_map(goal[0], -goal[1])
+            pt = (int(pt_x), int(pt_y))
+            color = (255, 255, 0)
+            cv2.circle(img2, pt, 3, color, -1)
+
+        # Dessiner la fleche rouge du robot
+        pt2_x = robot_pose[0] + np.cos(robot_pose[2]) * 20
+        pt2_y = robot_pose[1] + np.sin(robot_pose[2]) * 20
+        
+        pt2_x, pt2_y = self.conv_world_to_map(pt2_x, -pt2_y)
+        pt1_x, pt1_y = self.conv_world_to_map(robot_pose[0], -robot_pose[1])
+
+        pt1 = (int(pt1_x), int(pt1_y))
+        pt2 = (int(pt2_x), int(pt2_y))
+        
+        cv2.arrowedLine(img=img2, pt1=pt1, pt2=pt2, color=(0, 0, 255), thickness=2)
+        
+        # Show image
+        cv2.imshow("map slam", img2)
+        key = cv2.waitKey(1)

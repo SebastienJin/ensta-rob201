@@ -10,9 +10,10 @@ from place_bot.entities.lidar import LidarParams
 
 from tiny_slam import TinySlam
 
-from control import potential_field_control, reactive_obst_avoid
+from control import potential_field_control, reactive_obst_avoid, potential_field_control_tp5
 from occupancy_grid import OccupancyGrid
 from planner import Planner
+from time import time
 
 
 # Definition of our robot controller
@@ -31,7 +32,7 @@ class MyRobotSlam(RobotAbstract):
         self.counter = 0
 
         # Init SLAM object
-        self._size_area = (800, 1200)
+        self._size_area = (1500, 800)
         self.occupancy_grid = OccupancyGrid(x_min=- self._size_area[0],
                                             x_max=self._size_area[0],
                                             y_min=- self._size_area[1],
@@ -50,7 +51,7 @@ class MyRobotSlam(RobotAbstract):
         """
         Main control function executed at each time step
         """
-        return self.control_tp4()
+        return self.control_tp5()
 
     def control_tp1(self):
         """
@@ -65,7 +66,7 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP2
         """
         pose = self.odometer_values()
-        # goal = np.array([[-400, 200, 0],[-105, 200, 0],[-100, 480, 0],[-15, 550, 0]])
+        # path following
         goal = np.array([[-400, 0, 0],[-400, 210, 0],[-105, 210, 0]])
         command, self.target = potential_field_control(self.lidar(), pose, goal, self.target)
 
@@ -78,7 +79,7 @@ class MyRobotSlam(RobotAbstract):
         self.tiny_slam.update_map(self.lidar(), self.odometer_values())
         
         pose = self.odometer_values()
-        goal = np.array([[-400, 0, 0],[-400, 200, 0],[-105, 200, 0]])
+        goal = np.array([[0, -400, 0]])
         command, self.target = potential_field_control(self.lidar(), pose, goal, self.target)
 
         return command
@@ -88,13 +89,46 @@ class MyRobotSlam(RobotAbstract):
         Control function for TP4
         """
         self.counter += 1
-        
-        self.tiny_slam.localise(self.lidar(), self.odometer_values())
+        if self.counter % 10 == 0:
+            self.tiny_slam.localise(self.lidar(), self.odometer_values())
         
         pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
         self.tiny_slam.update_map(self.lidar(), pose)
 
-        goal = np.array([[-400, 0, 0],[-400, 200, 0],[-105, 200, 0]])
+        goal = np.array([[0, -400, 0]])
         command, self.target = potential_field_control(self.lidar(), pose, goal, self.target)
         
+        return command
+    
+    def control_tp5(self):
+        """
+        Control function for TP5
+        """
+        
+        # go to the goal
+        pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
+        self.tiny_slam.localise(self.lidar(), self.odometer_values())
+        self.tiny_slam.update_map(self.lidar(), pose)
+        command = potential_field_control_tp5(self.lidar(), pose, self.occupancy_grid.goal)
+
+        if np.linalg.norm(self.tiny_slam.get_corrected_pose(self.odometer_values(), None) - self.occupancy_grid.goal) <= 5:
+
+            if self.occupancy_grid.is_primary_goal:
+
+                start = time()
+                self.occupancy_grid.path = self.planner.plan(np.array([0, 0, 0]), self.tiny_slam.get_corrected_pose(self.odometer_values(), None) )
+                print("Time of calculation : ", round(time()- start,3), " s.")
+
+                self.occupancy_grid.is_primary_goal = 0
+                self.occupancy_grid.counter_back_to_start = 0
+
+            else:
+                n_step = 5
+                if self.occupancy_grid.counter_back_to_start < len(self.occupancy_grid.path)-n_step:
+                    x_new_goal, y_new_goal = self.tiny_slam.grid.conv_map_to_world(self.occupancy_grid.path[self.occupancy_grid.counter_back_to_start][0],self.occupancy_grid.path[self.occupancy_grid.counter_back_to_start][1])
+                    self.occupancy_grid.counter_back_to_start += n_step
+                    self.occupancy_grid.goal = np.array([x_new_goal, -y_new_goal, 0])
+                else:
+                    self.occupancy_grid.goal = np.array([0, 0, 0])
+
         return command

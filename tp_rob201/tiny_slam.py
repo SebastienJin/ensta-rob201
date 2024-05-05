@@ -86,9 +86,8 @@ class TinySlam:
         n = 0
         sigma = 0.01
         
-        while ( n < 1000 ):
+        while ( n < 100 ):
             change = np.random.normal(0, sigma,3)
-            change[2] = change[2]/10
             ODOM_POSE_REF = self.odom_pose_ref + change
             pose = self.get_corrected_pose(raw_odom_pose, ODOM_POSE_REF)
             current_score = self._score(lidar, pose)
@@ -118,14 +117,21 @@ class TinySlam:
 
         p1, p2 = 0.99, 0.01
         val1, val2 = np.log(p1/(1-p1)), np.log(p2/(1-p2))
-        
+
         obs_x = distances * np.cos(angles + current_angle) + current_position[0]
         obs_y = distances * np.sin(angles + current_angle) + current_position[1]
         self.grid.add_map_points(obs_x, obs_y, val1)
 
-        prop = 0.9
-        obs_x_line = prop * distances * np.cos(angles + current_angle) + current_position[0]
-        obs_y_line = prop * distances * np.sin(angles + current_angle) + current_position[1]
+        # par propotion
+        # prop = 0.9
+        # obs_x_line = prop * distances * np.cos(angles + current_angle) + current_position[0]
+        # obs_y_line = prop * distances * np.sin(angles + current_angle) + current_position[1]
+        
+        # fix distance
+        dis_mur = 30
+        obs_x_line = (distances - dis_mur) * np.cos(angles + current_angle) + current_position[0]
+        obs_y_line = (distances - dis_mur) * np.sin(angles + current_angle) + current_position[1]
+        
         for i in range(len(distances)):
             self.grid.add_map_line(current_position[0], current_position[1], obs_x_line[i], obs_y_line[i], val2)
         
@@ -133,7 +139,11 @@ class TinySlam:
         self.grid.occupancy_map[self.grid.occupancy_map > seuil] = seuil
         self.grid.occupancy_map[self.grid.occupancy_map < -seuil] = -seuil
         
-        self.grid.display_cv(pose)
+        # if self.grid.is_primary_goal:
+        #     self.grid.display_cv(pose)
+        # else:
+        #     self.grid.display_cv(pose, goal=self.grid.goal, traj=np.array(self.grid.path).T)
+        self.grid.my_display(pose, goal=self.grid.goal, traj=self.grid.path)
 
     def compute(self):
         """ Useless function, just for the exercise on using the profiler """
