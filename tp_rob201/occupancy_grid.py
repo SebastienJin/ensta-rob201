@@ -26,15 +26,15 @@ class OccupancyGrid:
         
         self.path = []
 
-        # Counter to follow where we are in the path back to the start
-        self.counter_back_to_start = 0
+        # index of path back to start
+        self.index_back_to_start = 0
 
-        #Boolean to indicate if we reached the primary goal
-        self.is_primary_goal = 1
+        # if we are going back to start
+        self.returning = 0
         
-        # Goal of the robot
-        self.goal = np.array([50, -200, 0])
-        self.primarygoal = self.goal
+        # Goals of the robot
+        self.goal = np.array([50, -200, 0]) # [-250, 100, 0]
+        self.main_goal = self.goal
 
     def conv_world_to_map(self, x_world, y_world):
         """
@@ -215,26 +215,22 @@ class OccupancyGrid:
         cv2.namedWindow("map slam")
 
         # goal and start
-        primarygoal = self.conv_world_to_map(self.primarygoal[0], -self.primarygoal[1])
-        cv2.circle(img2, primarygoal, 3, color=(255, 255, 0), thickness=-1)    
+        main_goal = self.conv_world_to_map(self.main_goal[0], -self.main_goal[1])
+        cv2.circle(img2, main_goal, 3, color=(255, 255, 0), thickness=-1)    
         cv2.circle(img2, self.conv_world_to_map(0,0), 3, color=(0, 255, 0), thickness=-1)
-        
-        # Dessiner le chemin avec points
-        # for node in traj:
-        #     pt_node = (node[0], node[1])
-        #     cv2.circle(img2, pt_node, 0, color=(0, 0, 0), thickness=1)
 
-        # Dessiner le chemin avec lignes
+        # path
         for i in range(len(traj) - 1):
             cv2.line(img2, traj[i], traj[i + 1], (255, 255, 255), 2)
         
+        # moving goal used for returning
         if goal is not None:
             pt_x, pt_y = self.conv_world_to_map(goal[0], -goal[1])
             pt = (int(pt_x), int(pt_y))
             color = (255, 255, 0)
             cv2.circle(img2, pt, 3, color, -1)
 
-        # Dessiner la fleche rouge du robot
+        # the robot
         pt2_x = robot_pose[0] + np.cos(robot_pose[2]) * 20
         pt2_y = robot_pose[1] + np.sin(robot_pose[2]) * 20
         
@@ -246,6 +242,5 @@ class OccupancyGrid:
         
         cv2.arrowedLine(img=img2, pt1=pt1, pt2=pt2, color=(0, 0, 255), thickness=2)
         
-        # Show image
         cv2.imshow("map slam", img2)
-        key = cv2.waitKey(1)
+        cv2.waitKey(1)

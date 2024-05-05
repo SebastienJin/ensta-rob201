@@ -101,7 +101,7 @@ class TinySlam:
 
         return best_score
 
-    def update_map(self, lidar, pose):
+    def update_map(self, lidar, pose, tp5 = False):
         """
         Bayesian map update with new observation
         lidar : placebot object with lidar data
@@ -135,15 +135,14 @@ class TinySlam:
         for i in range(len(distances)):
             self.grid.add_map_line(current_position[0], current_position[1], obs_x_line[i], obs_y_line[i], val2)
         
-        seuil = 8
+        seuil = 5
         self.grid.occupancy_map[self.grid.occupancy_map > seuil] = seuil
         self.grid.occupancy_map[self.grid.occupancy_map < -seuil] = -seuil
         
-        # if self.grid.is_primary_goal:
-        #     self.grid.display_cv(pose)
-        # else:
-        #     self.grid.display_cv(pose, goal=self.grid.goal, traj=np.array(self.grid.path).T)
-        self.grid.my_display(pose, goal=self.grid.goal, traj=self.grid.path)
+        if tp5:
+            self.grid.my_display(pose, goal=self.grid.goal, traj=self.grid.path)
+        else:
+            self.grid.display_cv(pose)
 
     def compute(self):
         """ Useless function, just for the exercise on using the profiler """

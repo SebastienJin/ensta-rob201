@@ -58,7 +58,7 @@ def potential_field_control(lidar, current_pose, goal_pose, target):
     d_change = 40
     stop_dist = 5
     d_safe = 40
-    K_cone = 0.1
+    K_cone = 0.2
     K_quad = K_cone/d_change
     
     distances = lidar.get_sensor_values()

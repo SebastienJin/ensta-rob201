@@ -88,6 +88,7 @@ class MyRobotSlam(RobotAbstract):
         """
         Control function for TP4
         """
+        # every 10 steps, localise
         self.counter += 1
         if self.counter % 10 == 0:
             self.tiny_slam.localise(self.lidar(), self.odometer_values())
@@ -95,7 +96,7 @@ class MyRobotSlam(RobotAbstract):
         pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
         self.tiny_slam.update_map(self.lidar(), pose)
 
-        goal = np.array([[0, -400, 0]])
+        goal = np.array([[50, -200, 0],[-100, -400, 0],[-300, -450, 0]])
         command, self.target = potential_field_control(self.lidar(), pose, goal, self.target)
         
         return command
@@ -108,27 +109,35 @@ class MyRobotSlam(RobotAbstract):
         # go to the goal
         pose = self.tiny_slam.get_corrected_pose(self.odometer_values())
         self.tiny_slam.localise(self.lidar(), self.odometer_values())
-        self.tiny_slam.update_map(self.lidar(), pose)
+        self.tiny_slam.update_map(self.lidar(), pose, True)
         command = potential_field_control_tp5(self.lidar(), pose, self.occupancy_grid.goal)
 
+        # if we are close to the goal, plan a path back to start
         if np.linalg.norm(self.tiny_slam.get_corrected_pose(self.odometer_values(), None) - self.occupancy_grid.goal) <= 5:
-
-            if self.occupancy_grid.is_primary_goal:
+            
+            # just reach the main goal, calculate a path first
+            if self.occupancy_grid.returning == 0:
 
                 start = time()
                 self.occupancy_grid.path = self.planner.plan(np.array([0, 0, 0]), self.tiny_slam.get_corrected_pose(self.odometer_values(), None) )
                 print("Time of calculation : ", round(time()- start,3), " s.")
 
-                self.occupancy_grid.is_primary_goal = 0
-                self.occupancy_grid.counter_back_to_start = 0
-
+                # update basic variables
+                self.occupancy_grid.returning = 1
+                self.occupancy_grid.index_back_to_start = 0
+            
+            # following the return path
             else:
+                # follow by reseting the goal recursively
                 n_step = 5
-                if self.occupancy_grid.counter_back_to_start < len(self.occupancy_grid.path)-n_step:
-                    x_new_goal, y_new_goal = self.tiny_slam.grid.conv_map_to_world(self.occupancy_grid.path[self.occupancy_grid.counter_back_to_start][0],self.occupancy_grid.path[self.occupancy_grid.counter_back_to_start][1])
-                    self.occupancy_grid.counter_back_to_start += n_step
+                if self.occupancy_grid.index_back_to_start < len(self.occupancy_grid.path) - n_step:
+                    x_new_goal, y_new_goal = self.tiny_slam.grid.conv_map_to_world(
+                        self.occupancy_grid.path[self.occupancy_grid.index_back_to_start][0],
+                        self.occupancy_grid.path[self.occupancy_grid.index_back_to_start][1])
+                    self.occupancy_grid.index_back_to_start += n_step
                     self.occupancy_grid.goal = np.array([x_new_goal, -y_new_goal, 0])
                 else:
+                    # final goal - (0,0,0)
                     self.occupancy_grid.goal = np.array([0, 0, 0])
 
         return command

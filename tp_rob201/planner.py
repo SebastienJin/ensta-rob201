@@ -32,7 +32,8 @@ class Planner:
 
     def explore_frontiers(self):
         """ Frontier based exploration """
-        goal = np.array([0, 0, 0])  # frontier to reach for exploration
+        # frontier to reach for exploration
+        goal = np.array([0, 0, 0])  
         return goal
     
     def get_neighbors(self, current_cell):
@@ -41,21 +42,17 @@ class Planner:
         neighbors = []
         for direction in directions:
             neighbor = (current_cell[0] + direction[0], current_cell[1] + direction[1])
-            if (0 <= neighbor[0] < self.grid.x_max_map) and (0 <= neighbor[1] < self.grid.y_max_map) and self.grid.occupancy_map[neighbor[0]][-neighbor[1]] <= 0:
+            # in the map and not occupied
+            if (0 <= neighbor[0] < self.grid.x_max_map) and (0 <= neighbor[1] < self.grid.y_max_map) and self.grid.occupancy_map[neighbor[0]][-neighbor[1]] < 0:
                 neighbors.append(neighbor)
         return neighbors
-    
-    # def get_neighbors(self, current):
-    #     x, y = current
-    #     neighbors = {(x+i, y+j) for i, j in itertools.product([-1, 0, 1], repeat=2) if (i != 0 or j != 0) and
-    #              0 <= x+i < self.grid.x_max_map and 0 <= y+j < self.grid.y_max_map and self.grid.occupancy_map[x+i][-(y+j)] <= 0}
-    #     return neighbors
     
     def heuristic(self, cell_1, cell_2):
         """ Compute the heuristic between two cells """
         return np.linalg.norm(np.array(cell_1) - np.array(cell_2))
     
     def reconstruct_path(self, cameFrom, current):
+        """ Reconstruct the path """
         total_path = [current]
         while current in cameFrom.keys() and cameFrom[current] != None:
             current = cameFrom[current]
@@ -63,59 +60,47 @@ class Planner:
         return total_path
     
     def A_Star(self, start, goal):
-        
-        # Initialisation
+        """ A* algorithm """
+        # form: (Corresponding weight, position)
         openSet = [(self.heuristic(start,goal), start)]         
-        # On définit la liste de priorités : de base, c'est juste le start, de fScore h(start, goal)
 
-        # Utiliser un set et non pas une liste est beaucoup plus rapide ( gain de temps : x10)
+        # set of location already passed
         visited_nodes = set()
         
+        # Dictionary used to record the position of the previous step
         cameFrom = {start: None}             
-        # Le point de départ n'a pas de prédécesseur
         
-        # J'ai essayé d'initialiser les dictionnaires avec des valeurs infinies, 
-        # mais cela s'est révélé extremement couteux en temps
-        # J'ai donc intitialisé des dictionnaires "vides" 
-        # et on compare les valeurs de gScore seulement quand il y a une valeur à comparer
-        # C'est à dire quand le noeud a déjà été visité.
+        # Dictionary used to record the gScore
+        gScore= {start : 0} 
+
+        # Dictionary used to record the fScore, f = g + h
+        fScore = {start : self.heuristic(start, goal)} 
         
-        gScore= {start : 0}                     # Distance start -> start : 0
-        fScore = {start : self.heuristic(start, goal)}  # Distance start -> goal : h(start, goal)
-        
-        # Tant que l'on a des noeuds à explorer
         while openSet:
-            # On pop le noeud avec le fScore le plus faible
+            # position with the smallest fScore
             current = heapq.heappop(openSet)[1]
             
-            # Si c'est le goal, banco
+            # If we reach the goal, we reconstruct the path
             if current == goal:
-                path = self.reconstruct_path(cameFrom, current)
-                return path
+                return self.reconstruct_path(cameFrom, current)
             
-            # Sinon, on regarde ses voisins
             visited_nodes.add(current)
             neighbors = self.get_neighbors(current)
 
-            # Pour chacun des voisins
             for neighbor in neighbors:
                 
-                    # On regarde son gScore a travers le noeud actuel
+                    # Compute temporary gScore
                     tentative_gScore = gScore[current] + self.heuristic(current, neighbor)
 
-                    # Si le voisin a déjà été visité et si la tentative de gScore n'améliore rien, on passe
-                    if neighbor in visited_nodes and tentative_gScore >= gScore[neighbor] - 10e-3:
+                    # already been visited and gScore is bigger than now
+                    if neighbor in visited_nodes and tentative_gScore >= gScore[neighbor]:
                         continue
                     
-                    # Sinon
+                    # update basic information
                     cameFrom[neighbor] = current                                 
-                    # On note le voisin comme issu du noeud courant
                     gScore[neighbor] = tentative_gScore                          
-                    # On actualise le gScore de ce voisin
                     fScore[neighbor] = tentative_gScore + self.heuristic(neighbor, goal) 
-                    # On note le fScore de ce voisin
                     if ((fScore[neighbor], neighbor) not in openSet):
-                        # On rajoute ce voisin dans openSet, avec son fScore
                         heapq.heappush(openSet, (fScore[neighbor], neighbor))
 
         return None
